@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Image Gallery</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for accordion transition */
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-content.open {
+            max-height: 1000px; /* Increased to ensure all content fits */
+            transition: max-height 0.5s ease-in;
+        }
+
+        /* Image container for positioning overlays */
+        .image-container {
+            position: relative;
+            cursor: pointer;
+            border-radius: 0.75rem; /* rounded-xl */
+            overflow: hidden; /* Ensures overlays stay within bounds */
+        }
+
+        /* Base style for the "Click for full resolution" overlay */
+        .image-container::before {
+            content: attr(data-hover-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            /* Changed font-size to 14px (0.875rem) */
+            font-size: 0.875rem; /* text-sm equivalent for 14px */
+            font-weight: bold;
+            border-radius: 0.75rem; /* rounded-xl */
+            z-index: 10; /* Ensure it's above the image */
+        }
+
+        .image-container:hover::before {
+            opacity: 1;
+        }
+
+        /* Modal specific styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 100; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.9); /* Black w/ opacity */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain; /* Ensure image fits within modal */
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px; /* Kept as is, as it's a control icon */
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Ensure Inter font is used */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-4xl w-full flex flex-col md:flex-row gap-8">
+        <!-- Image Section -->
+        <div class="md:flex-[3] flex flex-col items-center justify-center">
+            <!-- Removed max-w-md to allow it to fill more space -->
+            <div class="image-container w-full aspect-w-16 aspect-h-9" data-hover-text="Click for full resolution">
+                <!-- Changed object-cover to object-contain to fit images without cropping -->
+                <img id="gallery-image" src="" alt="" class="w-full h-full rounded-xl shadow-md object-contain">
+            </div>
+            <div class="flex mt-6 space-x-4 w-full justify-center">
+                <button id="prev-button" class="flex-1 px-6 py-3 bg-[#00592e] text-white rounded-lg shadow-md hover:bg-[#004725] transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00733a] focus:ring-opacity-75">
+                    Previous
+                </button>
+                <button id="next-button" class="flex-1 px-6 py-3 bg-[#00592e] text-white rounded-lg shadow-md hover:bg-[#004725] transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00733a] focus:ring-opacity-75">
+                    Next
+                </button>
+            </div>
+        </div>
+
+        <!-- Accordion Section -->
+        <div class="md:flex-[2]">
+            <!-- Added ID to the H2 tag for easy manipulation in JS -->
+            <h2 id="image-description-title" class="text-2xl font-bold text-gray-800 mb-4">Image Description</h2>
+            <!-- Changed text-xs to text-sm for 14px font size -->
+            <p id="main-image-description" class="text-sm text-gray-700 mt-2 mb-4"></p>
+            <div id="accordion-container" class="space-y-2">
+                <!-- Accordion items will be loaded here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Resolution Image Modal -->
+    <div id="image-modal" class="modal">
+        <span class="close-button" id="close-modal">&times;</span>
+        <img class="modal-content rounded-xl" id="modal-image">
+    </div>
+
+    <script>
+        // Array of image data, including URLs, titles, and descriptions
+        const images = [
+            // Original third image (now first) - Title changed to "Regent Street"
+            {
+                url: "https://www.pclconsult.co.uk/wp-content/uploads/2025/07/ue3obbr1ojmaqkk9so4w-1.jpg",
+                title: "Regent Street", // Corrected title
+                descriptions: [
+                    "1. A close-up shot revealing intricate details, this image focuses on the delicate textures and subtle nuances of its subject.",
+                    "2. It encourages a deeper look, appreciating the artistry in the small elements often overlooked in broader views.",
+                    "3. The lighting emphasizes the fine lines and contours, adding depth to the subject.",
+                    "4. The colors are rich and vibrant, bringing the details to life.",
+                    "5. This perspective offers a unique insight into the subject's complexity.",
+                    "6. The background is softly blurred, ensuring the focus remains on the intricate foreground.",
+                    "7. It's a testament to the beauty found in macro photography."
+                ],
+                mainDescription: "Regent Street is more than a street, one of the world’s greatest streets, a global stage where people come to see and be seen. It evokes the spirit of the Regency promenade, blending heritage with spectacle. Today’s visitors are viewers and sharers; looking at each other, in shops, at shop windows, and on their screens. Snapping. Posting. Dispatching images around the world. Despite its heritage and retail offer, today 62% of visitors don’t find it inviting to stay. We can change that with more space, less traffic, and a better experience for all. We aim to transform Regent Street into a more vibrant, welcoming place. Walking from shop to shop in the dappled in the shade of trees. Pocket gardens. Playful spaces. A street that invites wonder, comfort, and connection. <br><strong>Our key proposals for Regent Street include:</strong>"
+            },
+            // Original second image (remains second)
+            {
+                url: "https://www.pclconsult.co.uk/wp-content/uploads/2025/07/kmowagilf7mwhaupbbht.jpg",
+                title: "All Souls Church", // Title remains the same
+                descriptions: [
+                    "1. An urban scene bustling with life, this photograph highlights the dynamic energy of a city street.",
+                    "2. The architecture stands tall, reflecting the vibrant pulse of metropolitan existence, while people move with purpose, creating a vivid tapestry of daily life.",
+                    "3. The composition draws the eye through the street, emphasizing depth and movement."
+                ],
+                mainDescription: "A distinctive setting for one of London’s most globally recognised listed churches. A destination and gateway for a transformed Regent Street. <br><strong>Our key proposals for All Souls Church:</strong>" // Bolded text on new line
+            },
+            // Original first image (now third) - Title changed to "The Quadrant"
+            {
+                url: "https://www.pclconsult.co.uk/wp-content/uploads/2025/07/p7mtxxwtaydh2xjfmprh-1.jpg",
+                title: "The Quadrant", // Corrected title
+                descriptions: [
+                    "1. This image captures a serene landscape, showcasing the tranquil beauty of nature with rolling hills and a clear sky.",
+                    "2. It evokes a sense of peace and vastness, inviting the viewer to immerse themselves in its calming presence.",
+                    "3. The colors are soft and harmonious, creating a visually soothing experience.",
+                    "4. The light suggests either early morning or late afternoon, adding to the peaceful ambiance."
+                ],
+                mainDescription: "The Quadrant’s sweeping Nash's designed curve offers a unique opportunity to create a distinctive public realm, seamlessly connecting Regent Street with Piccadilly Circus through elegant interventions that celebrate its historic form. <br><strong>Our key proposals for the Quadrant:</strong>" // Changed and bolded text on new line
+            }
+        ];
+
+        let currentImageIndex = 0; // Keep track of the current image
+
+        // Get DOM elements
+        const galleryImage = document.getElementById('gallery-image');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const accordionContainer = document.getElementById('accordion-container');
+        const imageContainer = document.querySelector('.image-container');
+        const imageModal = document.getElementById('image-modal');
+        const modalImage = document.getElementById('modal-image');
+        const closeModalButton = document.getElementById('close-modal');
+        const imageDescriptionTitle = document.getElementById('image-description-title');
+        const mainImageDescription = document.getElementById('main-image-description'); // Get the new paragraph element
+
+        /**
+         * Updates the displayed image and its corresponding accordion description.
+         * Dynamically creates multiple numbered accordion dropdowns based on the current image's descriptions.
+         */
+        function updateGallery() {
+            // Set the image source
+            galleryImage.src = images[currentImageIndex].url;
+            // Set the alt text for the image
+            galleryImage.alt = images[currentImageIndex].title;
+
+            // Update the main image description title
+            imageDescriptionTitle.textContent = images[currentImageIndex].title;
+
+            // Update the main text description below the title
+            if (images[currentImageIndex].mainDescription) {
+                // Use innerHTML to render the strong tag and <br> tag
+                mainImageDescription.innerHTML = images[currentImageIndex].mainDescription;
+                mainImageDescription.style.display = 'block'; // Ensure it's visible
+            } else {
+                mainImageDescription.innerHTML = ''; // Use innerHTML for consistency
+                mainImageDescription.style.display = 'none'; // Hide if no description
+            }
+
+            // Clear previous accordion content
+            accordionContainer.innerHTML = '';
+
+            // Generate new accordion items for each description
+            images[currentImageIndex].descriptions.forEach((desc, index) => {
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'border border-gray-200 rounded-xl overflow-hidden';
+
+                const accordionHeaderButton = document.createElement('button');
+                // text-sm is 14px
+                accordionHeaderButton.className = 'w-full text-left p-4 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 flex justify-between items-center rounded-t-xl';
+                accordionHeaderButton.innerHTML = `
+                    <span class="text-sm font-semibold text-gray-700">Description ${index + 1}</span>
+                    <svg class="w-5 h-5 text-gray-600 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                `;
+                accordionItem.appendChild(accordionHeaderButton);
+
+                const accordionContentDiv = document.createElement('div');
+                accordionContentDiv.className = 'accordion-content bg-white rounded-b-xl';
+
+                const innerContentDiv = document.createElement('div');
+                // text-sm is 14px
+                innerContentDiv.className = 'p-3 text-sm text-gray-600';
+                innerContentDiv.textContent = desc;
+
+                accordionContentDiv.appendChild(innerContentDiv);
+                accordionItem.appendChild(accordionContentDiv);
+
+                accordionContainer.appendChild(accordionItem);
+
+                // Add event listener to each new accordion header button
+                accordionHeaderButton.addEventListener('click', () => {
+                    // Close all other open accordion contents and reset their icons
+                    document.querySelectorAll('#accordion-container .accordion-content.open').forEach(content => {
+                        if (content !== accordionContentDiv) { // Don't close the one being clicked
+                            content.classList.remove('open');
+                            // Find the SVG icon within the header of this content and rotate it back
+                            content.previousElementSibling.querySelector('svg').classList.remove('rotate-180');
+                        }
+                    });
+
+                    // Toggle the clicked accordion's content and icon
+                    accordionContentDiv.classList.toggle('open');
+                    accordionHeaderButton.querySelector('svg').classList.toggle('rotate-180');
+                });
+            });
+        }
+
+        /**
+         * Handles the click event for the "Previous" button.
+         * Cycles through images backward, wrapping around to the end if at the beginning.
+         */
+        prevButton.addEventListener('click', () => {
+            currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+            updateGallery();
+        });
+
+        /**
+         * Handles the click event for the "Next" button.
+         * Cycles through images forward, wrapping around to the beginning if at the end.
+         */
+        nextButton.addEventListener('click', () => {
+            currentImageIndex = (currentImageIndex + 1) % images.length;
+            updateGallery();
+        });
+
+        /**
+         * Opens the full-resolution image modal when the gallery image is clicked.
+         */
+        imageContainer.addEventListener('click', () => {
+            modalImage.src = images[currentImageIndex].url; // Set modal image to current gallery image
+            modalImage.alt = images[currentImageIndex].title; // Set alt text for modal image
+            imageModal.style.display = 'flex'; // Show the modal
+        });
+
+        /**
+         * Closes the full-resolution image modal when the close button is clicked.
+         */
+        closeModalButton.addEventListener('click', () => {
+            imageModal.style.display = 'none'; // Hide the modal
+        });
+
+        /**
+         * Closes the full-resolution image modal when clicking outside the image (on the overlay).
+         */
+        imageModal.addEventListener('click', (event) => {
+            if (event.target === imageModal) {
+                imageModal.style.display = 'none';
+            }
+        });
+
+        // Initialize the gallery with the first image and description
+        updateGallery();
+    </script>
+</body>
+</html>
